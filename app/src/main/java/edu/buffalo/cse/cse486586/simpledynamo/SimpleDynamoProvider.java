@@ -749,7 +749,8 @@ public class SimpleDynamoProvider extends ContentProvider {
 				}
 
 
-			}				return null;
+			}
+			return null;
 		}
 	}
 
