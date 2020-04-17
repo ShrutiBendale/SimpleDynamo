@@ -35,6 +35,7 @@ import android.util.Log;
 
 import org.w3c.dom.Node;
 
+// SimpleDynamoProvider manages the server side and client side data storage activities for all nodes in our distributed system 
 public class SimpleDynamoProvider extends ContentProvider {
 
 	public String myPort = ""; //portStr * 2
@@ -51,30 +52,15 @@ public class SimpleDynamoProvider extends ContentProvider {
 	String thatnodesucc = "";
 	BlockingQueue<String> queryblock = new ArrayBlockingQueue<String>(1);
 	BlockingQueue<String> queryallblock = new ArrayBlockingQueue<String>(1);
-	//	BlockingQueue<String> insertblock = new ArrayBlockingQueue<String>(1);
 	ArrayList<String> PendingInserts = new ArrayList<String>();
 
 	@Override
-	public int delete(Uri uri, String selection, String[] selectionArgs) {
+	public int delete(Uri uri, String selection, String[] selectionArgs) {		//function to handle delete reguests
 		Context context = getContext();
-
-		// if ((selection.equals("*") && (successorID.equals(portStr))) || ((selection.equals("@"))) || )
-		//https://docs.oracle.com/javase/7/docs/api/java/io/File.html
-//		if(selection.equals("*") || selection.equals("@"))
-//		{
-//		File[] list  = context.getFilesDir().listFiles();
-//		for (File f : list) {
-//			f.delete();
-
-//		}else{
 		File dir =  context.getFilesDir();
 		File file= new File(dir,selection);
 		file.delete();
 		Log.e("Delete", "Deleted key " +selection);
-
-//		}
-//		String send_delete_request = "DeleteRequest###"  + selection;
-//		new RequestForward().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, send_delete_request);
 		return 0;
 	}
 
@@ -83,64 +69,32 @@ public class SimpleDynamoProvider extends ContentProvider {
 		return null;
 	}
 
-
+	
 	@Override
-	public Uri insert(Uri uri, ContentValues values) {
+	public Uri insert(Uri uri, ContentValues values) {		//function to handle insert requests [Check if it belongs to me; else forward to the node it belongs to]
 		try {
-//			while (true) {
-//				if(!blockflag)
-//					break;
-//			}
 			String keyToInsert = values.get("key").toString();
 			String valueToInsert = values.get("value").toString();
 			Context context = getContext();
 			String key_hash = genHash(keyToInsert);
-//			Thread.sleep(100);
 			Log.e("Inserting key&value", "key: " + keyToInsert + "value: " + valueToInsert);
-//			for (int i = 0; i < LiveNodesIDs.length; i++) {		//iterating through all the live nodes
-//				String me = LiveNodesIDs[i];
-//
-//				if (i == (LiveNodesIDs.length - 1)) { //last  node
-//					predecessorID = LiveNodesIDs[i - 1];
-//					successorID = LiveNodesIDs[0];
-//
-//				} else if (i == 0) { //first node
-//					predecessorID = LiveNodesIDs[LiveNodesIDs.length - 1];
-//					successorID = LiveNodesIDs[i + 1];
-//
-//				} else {
-//					predecessorID = LiveNodesIDs[i - 1];
-//					successorID = LiveNodesIDs[i + 1];
-//				}
-				String portID_hash = genHash(myPort);
-				String predecessorID_hash = genHash(predecessorID);
+			
+			String portID_hash = genHash(myPort);
+			String predecessorID_hash = genHash(predecessorID);
 
-				String  ret = doesItBelongToMe(key_hash, predecessorID_hash, portID_hash, keyToInsert);		//checking if the key belongs to that node
-//				if (ret == 1) {        //insert to next two successor nodes
-					Log.v("Insert", keyToInsert + " belongs to " + ret);
-//					ret=0;
-					String send_insert_request = "Insert" + "###" + keyToInsert + "###" + valueToInsert + "###" + ret + "###" + successorOfSuccessor(ret);
-					new RequestForward().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, send_insert_request);
-//					break;
-//				}
-//			} catch (InterruptedException e1) {
-//			e1.printStackTrace();
+			String  ret = doesItBelongToMe(key_hash, predecessorID_hash, portID_hash, keyToInsert);		//checking if the key belongs to that node 
+			Log.v("Insert", keyToInsert + " belongs to " + ret);
+			String send_insert_request = "Insert" + "###" + keyToInsert + "###" + valueToInsert + "###" + ret + "###" + successorOfSuccessor(ret);
+			
+			//Sending it to the Async Task to insert/forward
+			new RequestForward().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, send_insert_request);
 		} catch (NoSuchAlgorithmException e1) {
 			e1.printStackTrace();
-//		}
-//			insertblock.take();
-
-//		} catch (NoSuchAlgorithmException e) {
-//			e.printStackTrace();
-//		} catch (Int  erruptedException e) {
-//			e.printStackTrace();
-//		} catch (InterruptedException e) {
-//			e.printStackTrace();
 		}
 		return null;
 	}
 
-
+	//checking where the key lies in the chord ring (Consistant hashing slides: https://cse.buffalo.edu/~stevko/courses/cse486/spring16/lectures/14-dht.pdf)
 	public String  doesItBelongToMe(String key_hash, String predecessorID_hash, String portID_hash, String keyToInsert) throws NoSuchAlgorithmException {
 		String hashNewkey = genHash(keyToInsert);
 		if(genHash(LiveNodesIDs[0]).compareTo(hashNewkey) >=0 || genHash(LiveNodesIDs[4]).compareTo(hashNewkey)<0){
@@ -158,19 +112,18 @@ public class SimpleDynamoProvider extends ContentProvider {
 	}
 
 
-
-
 	@Override
-	public boolean onCreate() {
+	public boolean onCreate() {	//this function is called whenever the nodes come online for the first time or after a failure
 
+		//initializations
 		String nodestring = "";
-
 		Log.e("created port:", myPort);
 
 		TelephonyManager tel = (TelephonyManager) getContext().getSystemService(Context.TELEPHONY_SERVICE);
 		portStr = tel.getLine1Number().substring(tel.getLine1Number().length() - 4);
 		final String myPort = String.valueOf((Integer.parseInt(portStr) * 2));
 
+		//creating a server thread
 		int server_port = 10000;
 		try {
 			ServerSocket serverSocket = new ServerSocket(server_port);
@@ -180,9 +133,9 @@ public class SimpleDynamoProvider extends ContentProvider {
 		} catch (IOException e) {
 			Log.e("OnCreate", "Can't create a server socket");
 		}
-
+		
+		//creating an array to keep a track of other nodes in the system
 		try {
-
 			LiveNodesHash.add(genHash("5554"));
 			LiveNodesHash.add(genHash("5556"));
 			LiveNodesHash.add(genHash("5558"));
@@ -202,7 +155,8 @@ public class SimpleDynamoProvider extends ContentProvider {
 			e.printStackTrace();
 		}
 
-		String join_request = "IAmAlive###" + portStr;       //sending joining request to client thread
+		//sending a request to client thread to send join broadcast to all other nodes
+		String join_request = "IAmAlive###" + portStr;       
 		Log.e("OnCreate", "sending join request:");
 		new RequestForward().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, join_request);
 
@@ -211,22 +165,14 @@ public class SimpleDynamoProvider extends ContentProvider {
 
 	@Override
 	public Cursor query(Uri uri, String[] projection, String selection,
-						String[] selectionArgs, String sortOrder) {
-		// TODO QUERY
-
-//		while (true) {
-//		if(!blockflag)
-//			break;
-//		}
-//		
+						String[] selectionArgs, String sortOrder) {	//function to handle data retreival requests
 		String readline = null;
 		Context context = getContext();
 		MatrixCursor matCur = new MatrixCursor(new String[]{"key", "value"});
 		String[] list = context.fileList();
 		Log.e("QueryProcess", "Query initiated");
 		try {
-
-			if ((selection.equals("@")))     //if the selection is @
+			if ((selection.equals("@")))     //if the selection is @ [query all the local data at current node]
 			{
 				Log.e("QuerySelection", "Case @");
 				for (String file : list) {
@@ -242,8 +188,8 @@ public class SimpleDynamoProvider extends ContentProvider {
 					}
 				}
 			}
-			else if((selection.equals("*"))) {
-				//return all files from my node
+			else if((selection.equals("*"))) {	//if the selection is * [query all the data stored all nodes]
+				//1.return all files from my node
 				Log.e("QuerySelection", "Case: forward request for *");
 				for (String file : list) {
 					InputStream inputStream = context.openFileInput(file);
@@ -257,7 +203,7 @@ public class SimpleDynamoProvider extends ContentProvider {
 						matCur.addRow(record);
 					}
 				}
-				//query other nodes for their files
+				//2.query other nodes for their files
 				String msg = "QueryAll###" + successorID + "###" + myPort;
 				new RequestForward().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, msg);
 				String allpairs = queryallblock.take();      //using a blocking queue to wait for the results of queries from other nodes
@@ -273,49 +219,29 @@ public class SimpleDynamoProvider extends ContentProvider {
 				}
 				return matCur;
 			}
-			else{
+			else{		//selection is a specific key and the value for that key is requested
 				String key= selection;
 				String key_hash = genHash(key);
 
 				Log.e("Query key", "key: " + key );
-//				for (int i = 0; i < LiveNodesIDs.length; i++) {		//iterating through all the live nodes
-//					String me = LiveNodesIDs[i];
+				String portID_hash = genHash(myPort);
+				String predecessorID_hash = genHash(predecessorID);
 
-//					if (i == (LiveNodesIDs.length - 1)) { //last  node
-//						predecessorID = LiveNodesIDs[i - 1];
-//						successorID = LiveNodesIDs[0];
-//
-//					} else if (i == 0) { //first node
-//						predecessorID = LiveNodesIDs[LiveNodesIDs.length - 1];
-//						successorID = LiveNodesIDs[i + 1];
-//
-//					} else {
-//						predecessorID = LiveNodesIDs[i - 1];
-//						successorID = LiveNodesIDs[i + 1];
-//					}
-					String portID_hash = genHash(myPort);
-					String predecessorID_hash = genHash(predecessorID);
-
-					String ret = doesItBelongToMe(key_hash, predecessorID_hash, portID_hash, key);		//checking if the key belongs to that node
-//					if (ret == 1) {        //insert to next two successor nodes
-//						ret = 0;
-						Log.v("Querykey:", "Key " + key + " belongs to " + ret);
-						String send_query_request = "Query" + "###" + key + "###" + ret + "###" + successorOfSuccessor(ret);
-						new RequestForward().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, send_query_request);
-//						break;
-//					}
-//				}
+				//checking if the key belongs to that node
+				String ret = doesItBelongToMe(key_hash, predecessorID_hash, portID_hash, key);		
+				Log.v("Querykey:", "Key " + key + " belongs to " + ret);
+				String send_query_request = "Query" + "###" + key + "###" + ret + "###" + successorOfSuccessor(ret);
+				new RequestForward().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, send_query_request);
+				
+				//waiting for the results using a blocking queue
 				String returnedstring = queryblock.take();
-
 				Log.e("Returned string", returnedstring);
-
 				String[] keyval = returnedstring.split("-->");
 				String keyreturned = keyval[0];
 				String value = keyval[1];
 				String record[] = {keyreturned, value};
 				Log.v("Returned Cursor", record[0] + record[1]);
 				matCur.addRow(record);
-
 				return matCur;
 			}
 		} catch (FileNotFoundException e) {
@@ -329,37 +255,32 @@ public class SimpleDynamoProvider extends ContentProvider {
 		}
 		return matCur;
 	}
+	
+	//checking where the key lies in the chord ring (Consistant hashing slides: https://cse.buffalo.edu/~stevko/courses/cse486/spring16/lectures/14-dht.pdf)
 	public int doesItBelongToMeQuery(String key_hash, String predecessorID_hash, String portID_hash, String keyToInsert){
 		int ret=-1;
-
-		if ((key_hash.compareTo(predecessorID_hash) > 0) && (key_hash.compareTo(portID_hash) < 0))     //if the node and predecessor are on the same side of 0 an d if key lies between node and successor
-		{
+		//if the node and predecessor are on the same side of 0 and if key lies between node and successor
+		if ((key_hash.compareTo(predecessorID_hash) > 0) && (key_hash.compareTo(portID_hash) < 0)) 
 			ret = 1;
-		} else if ((predecessorID_hash.compareTo(portID_hash) > 0) && ((portID_hash.compareTo(key_hash) > 0) && (predecessorID_hash.compareTo(key_hash)>0)))     //if the predecessor and the node lie on different sides of 0 and the key lies after 0 and before the node and the predecessor
-		{
-
+		//if the predecessor and the node lie on different sides of 0 and the key lies after 0 and before the node and the predecessor
+		else if ((predecessorID_hash.compareTo(portID_hash) > 0) && ((portID_hash.compareTo(key_hash) > 0) && (predecessorID_hash.compareTo(key_hash)>0)))     
 			ret = 1;
-
-		} else if ((predecessorID_hash.compareTo(portID_hash) > 0) && ((key_hash.compareTo(predecessorID_hash) > 0) && (predecessorID_hash.compareTo(key_hash)<0)))      //if the predecessor and the node lie on different sides of 0 and the key lies before 0 and after the node and the predecessor
-		{
-
+		//if the predecessor and the node lie on different sides of 0 and the key lies before 0 and after the node and the predecessor
+		else if ((predecessorID_hash.compareTo(portID_hash) > 0) && ((key_hash.compareTo(predecessorID_hash) > 0) && (predecessorID_hash.compareTo(key_hash)<0)))      
 			ret = 1;
-
-		} else //forward the insert to the successor
-		{
+		//forward the insert to the successor
+		else 
 			ret = 0;
-		}
-
 		return ret;
 	}
 
 	@Override
-	public int update(Uri uri, ContentValues values, String selection,
-					  String[] selectionArgs) {
+	public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
 		// TODO UPDATE
 		return 0;
 	}
 
+	//function to generate Hash Value using the SHA1 hashing algorithm
 	private String genHash(String input) throws NoSuchAlgorithmException {
 		MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
 		byte[] sha1Hash = sha1.digest(input.getBytes());
@@ -370,8 +291,9 @@ public class SimpleDynamoProvider extends ContentProvider {
 		return formatter.toString();
 	}
 
+	//Server thread
 	private class ServerTask extends AsyncTask<ServerSocket, String, Void> {
-
+		
 		private Uri buildUri(String scheme, String authority) {
 			Uri.Builder uriBuilder = new Uri.Builder();
 			uriBuilder.authority(authority);
@@ -392,10 +314,11 @@ public class SimpleDynamoProvider extends ContentProvider {
 			String pred = "";
 
 			Log.e("server", "check");
+			
+			//Keep  listening..
 			while (true) {
 				try {
 					Socket socket = serverSocket.accept();
-//					Log.e("server", "socket accepted");
 					inmessage = new DataInputStream(socket.getInputStream());
 					String inmsg = inmessage.readUTF();
 					String[] inputstuff = inmsg.split("###");
@@ -412,7 +335,6 @@ public class SimpleDynamoProvider extends ContentProvider {
 							}
 							Log.v("FailureHandling", "Completing pending inserts: " + keyval);
 							PendingInserts.clear();
-//							failednode = "";
 							publishProgress(keyval);
 						}
 					}
