@@ -188,7 +188,7 @@ public class SimpleDynamoProvider extends ContentProvider {
 					}
 				}
 			}
-			else if((selection.equals("*"))) {	//if the selection is * [query all the data stored all nodes]
+			else if((selection.equals("*"))) {	//if the selection is * [query all the data stored at all nodes]
 				//1.return all files from my node
 				Log.e("QuerySelection", "Case: forward request for *");
 				for (String file : list) {
