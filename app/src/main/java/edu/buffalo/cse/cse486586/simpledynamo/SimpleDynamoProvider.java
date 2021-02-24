@@ -70,8 +70,9 @@ public class SimpleDynamoProvider extends ContentProvider {
 	}
 
 	
+	//function to handle insert requests [Check if it belongs to me; else forward to the node it belongs to]
 	@Override
-	public Uri insert(Uri uri, ContentValues values) {		//function to handle insert requests [Check if it belongs to me; else forward to the node it belongs to]
+	public Uri insert(Uri uri, ContentValues values) {		
 		try {
 			String keyToInsert = values.get("key").toString();
 			String valueToInsert = values.get("value").toString();
@@ -111,9 +112,9 @@ public class SimpleDynamoProvider extends ContentProvider {
 			return null;
 	}
 
-
+	//this function is called whenever the nodes come online for the first time or after a failure
 	@Override
-	public boolean onCreate() {	//this function is called whenever the nodes come online for the first time or after a failure
+	public boolean onCreate() {	
 
 		//initializations
 		String nodestring = "";
@@ -162,17 +163,18 @@ public class SimpleDynamoProvider extends ContentProvider {
 
 		return false;
 	}
-
+	
+	//function to handle data retreival requests
 	@Override
-	public Cursor query(Uri uri, String[] projection, String selection,
-						String[] selectionArgs, String sortOrder) {	//function to handle data retreival requests
+	public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {	
 		String readline = null;
 		Context context = getContext();
 		MatrixCursor matCur = new MatrixCursor(new String[]{"key", "value"});
 		String[] list = context.fileList();
 		Log.e("QueryProcess", "Query initiated");
 		try {
-			if ((selection.equals("@")))     //if the selection is @ [query all the local data at current node]
+			//if the selection is @ [query all the local data at current node]
+			if ((selection.equals("@")))     
 			{
 				Log.e("QuerySelection", "Case @");
 				for (String file : list) {
@@ -188,7 +190,8 @@ public class SimpleDynamoProvider extends ContentProvider {
 					}
 				}
 			}
-			else if((selection.equals("*"))) {	//if the selection is * [query all the data stored at all nodes]
+			//if the selection is * [query all the data stored at all nodes]
+			else if((selection.equals("*"))) {	
 				//1.return all files from my node
 				Log.e("QuerySelection", "Case: forward request for *");
 				for (String file : list) {
@@ -206,8 +209,10 @@ public class SimpleDynamoProvider extends ContentProvider {
 				//2.query other nodes for their files
 				String msg = "QueryAll###" + successorID + "###" + myPort;
 				new RequestForward().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, msg);
-				String allpairs = queryallblock.take();      //using a blocking queue to wait for the results of queries from other nodes
-				String[] pairs = allpairs.split("::");       //splitting the string of keys,values which is of the form: key1<-->value1::key2<-->value2::key3<-->value3 and so on
+				//using a blocking queue to wait for the results of queries from other nodes
+				String allpairs = queryallblock.take(); 
+				//splitting the string of keys,values which is of the form: key1<-->value1::key2<-->value2::key3<-->value3 and so on
+				String[] pairs = allpairs.split("::");       
 				for (String i : pairs) {
 					if (!i.equals("") && !(i == null)) {
 						String[] keyval = i.split("<-->");
@@ -219,7 +224,8 @@ public class SimpleDynamoProvider extends ContentProvider {
 				}
 				return matCur;
 			}
-			else{		//selection is a specific key and the value for that key is requested
+			else{		
+				//selection is a specific key and the value for that key is requested
 				String key= selection;
 				String key_hash = genHash(key);
 
@@ -290,8 +296,9 @@ public class SimpleDynamoProvider extends ContentProvider {
 		}
 		return formatter.toString();
 	}
-
-	//Server thread
+	
+	//--------------------------------------------Server thread-------------------------------------------------
+	
 	private class ServerTask extends AsyncTask<ServerSocket, String, Void> {
 		
 		private Uri buildUri(String scheme, String authority) {
@@ -315,7 +322,7 @@ public class SimpleDynamoProvider extends ContentProvider {
 
 			Log.e("server", "check");
 			
-			//Keep  listening..
+			//Keep  listening...
 			while (true) {
 				try {
 					Socket socket = serverSocket.accept();
@@ -412,7 +419,7 @@ public class SimpleDynamoProvider extends ContentProvider {
 		}
 	}
 
-	//Client Task
+	//-----------------------------------------------Client Thread--------------------------------------------------
 	public class RequestForward extends AsyncTask<String, Void, Void> {
 
 		@Override
