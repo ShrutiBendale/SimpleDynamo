@@ -53,9 +53,10 @@ public class SimpleDynamoProvider extends ContentProvider {
 	BlockingQueue<String> queryblock = new ArrayBlockingQueue<String>(1);
 	BlockingQueue<String> queryallblock = new ArrayBlockingQueue<String>(1);
 	ArrayList<String> PendingInserts = new ArrayList<String>();
-
+	
+	//function to handle delete reguests
 	@Override
-	public int delete(Uri uri, String selection, String[] selectionArgs) {		//function to handle delete reguests
+	public int delete(Uri uri, String selection, String[] selectionArgs) {		
 		Context context = getContext();
 		File dir =  context.getFilesDir();
 		File file= new File(dir,selection);
