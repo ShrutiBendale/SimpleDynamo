@@ -346,7 +346,7 @@ public class SimpleDynamoProvider extends ContentProvider {
 							publishProgress(keyval);
 						}
 					}
-					//______________________________________________________________________---Failed node Insert Server---____________________________________________________________________________________
+					//______________________________________________________________________---Failed node Insert: Server---____________________________________________________________________________________
 					else if (inputstuff[0].equals("PendingInserts")) {
 						for(int i=2; i< inputstuff.length; i++) {
 							Log.v("Pending inserts", "inserting..." + inputstuff[i]);
@@ -363,7 +363,7 @@ public class SimpleDynamoProvider extends ContentProvider {
 						outmessage.flush();
 					}
 
-					//______________________________________________________________________---Insert Server---____________________________________________________________________________________
+					//______________________________________________________________________---Insert: Server---____________________________________________________________________________________
 					else if (inputstuff[0].equals("Insert")) {
 						Log.v("insert server", "inserting key " + inputstuff[1] + " with value " +inputstuff[2]);
 						FileOutputStream outputStream = getContext().openFileOutput(inputstuff[1], Context.MODE_PRIVATE);
@@ -373,7 +373,7 @@ public class SimpleDynamoProvider extends ContentProvider {
 						outmessage = new DataOutputStream(socket.getOutputStream());
 						outmessage.writeUTF("ack");
 						outmessage.flush();
-						//______________________________________________________________________---Query Server---____________________________________________________________________________________
+						//______________________________________________________________________---Query: Server---____________________________________________________________________________________
 					}else if (inputstuff[0].equals("Query")) {
 						InputStream input = getContext().openFileInput(inputstuff[1]);
 						if (input != null) {
@@ -386,7 +386,8 @@ public class SimpleDynamoProvider extends ContentProvider {
 
 						}
 
-					}else if (inputstuff[0].equals("QueryAll")) {       //successor will return all key, value pairs in it's memory and forward the query request
+					}else if (inputstuff[0].equals("QueryAll")) {       
+						//successor will return all key, value pairs in it's memory and forward the query request
 						Cursor cursor2 = query(Uri, null, "@", null, null, null);
 						Log.e("ALLQueryServer","cursor created");
 
@@ -396,7 +397,8 @@ public class SimpleDynamoProvider extends ContentProvider {
 
 								String key = cursor2.getString(cursor2.getColumnIndex("key"));
 								String value = cursor2.getString(cursor2.getColumnIndex("value"));
-								sendqueryout2 += key + "<-->" + value + "::";                           //converting the cursor to a string and seperating the key,value pairs using delimitors
+								//converting the cursor to a string and seperating the key,value pairs using delimitors
+								sendqueryout2 += key + "<-->" + value + "::";                           
 							} while (cursor2.moveToNext());
 						}
 						Log.e("ALLQueryServer",sendqueryout2);
@@ -484,7 +486,7 @@ public class SimpleDynamoProvider extends ContentProvider {
 			}
 
 
-			//______________________________________________________________________---Insert Client---____________________________________________________________________________________
+			//______________________________________________________________________---Insert: Client---____________________________________________________________________________________
 			else if (request[0].equals("Insert")) {
 				String thatnode = request[3];
 				thatnodesucc = request[4];
@@ -589,7 +591,7 @@ public class SimpleDynamoProvider extends ContentProvider {
 				blockflag = false;
 			}
 
-			//______________________________________________________________________---Query Client---____________________________________________________________________________________
+			//______________________________________________________________________---Query: Client---____________________________________________________________________________________
 
 			if (request[0].equals("Query")) {
 				String thatnode = request[2];
@@ -712,7 +714,8 @@ public class SimpleDynamoProvider extends ContentProvider {
 						}
 					}
 					Log.e("QueryAllPairs", pairs);
-					queryallblock.put(pairs);       //adding the string of all returned key,value pairs to the blocking queue
+					//adding the string of all returned key,value pairs to the blocking queue
+					queryallblock.put(pairs);       
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -768,9 +771,11 @@ public class SimpleDynamoProvider extends ContentProvider {
 
 		for (int i = 0; i < LiveNodesIDs.length; i++) {
 			if (succ.equals(LiveNodesIDs[i])) {
-				if (i == (LiveNodesIDs.length - 1))  //last  node
+				//last  node
+				if (i == (LiveNodesIDs.length - 1))  
 					succ2 = LiveNodesIDs[0];
-				else if (i == 0)                    //first node
+				//first node
+				else if (i == 0)                    
 					succ2 = LiveNodesIDs[i + 1];
 				else
 					succ2 = LiveNodesIDs[i + 1];
