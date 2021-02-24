@@ -12,3 +12,6 @@ Replication
 Failure Handling
 
 Content providers on all the nodes were used to store the data, but the abstraction it provides was a general key-value table. Local Content Providers at every node were created to support Membership, Request Routing, Quorum replication, Chain replication and Failure Handling.
+
+The code for the content managers is available here: 
+https://github.com/ShrutiBendale/SimpleDynamo/blob/master/app/src/main/java/edu/buffalo/cse/cse486586/simpledynamo/SimpleDynamoProvider.java
