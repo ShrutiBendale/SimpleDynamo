@@ -4,7 +4,7 @@
 In this project, i have implemented a simplified version of DynamoDB, Amazon's highly available distributed key-value storage system.  
 The main goal is to provide both availability and linearizability at the same time. In other words, the implementation always performs read and write operations successfully even under failures. At the same time, a read operation always returns the most recent value.
 
-There were three main pieces that are implemented:<br>
+There are three main pieces that are implemented:<br>
 1. Partition<br>
 2. Replication<br>
 3. Failure Handling<br>
