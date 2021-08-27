@@ -54,7 +54,7 @@ public class SimpleDynamoProvider extends ContentProvider {
 	BlockingQueue<String> queryallblock = new ArrayBlockingQueue<String>(1);
 	ArrayList<String> PendingInserts = new ArrayList<String>();
 	
-	//function to handle delete reguests
+	//function to handle delete requests
 	@Override
 	public int delete(Uri uri, String selection, String[] selectionArgs) {		
 		Context context = getContext();
